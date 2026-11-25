@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: omt_postgres
+    environment:
+      POSTGRES_USER: db_user
+      POSTGRES_PASSWORD: strong_vault_pass
+      POSTGRES_DB: platform_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - omt_network
+    restart: always
+
+  backend:
+    build: ./backend
+    container_name: omt_backend
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - NODE_ENV=development
+      - ALLOWED_ORIGINS=http://localhost:3000
+      - DATABASE_URL=postgresql://db_user:strong_vault_pass@postgres:5432/platform_db
+      - JWT_SECRET_KEY=core_cryptographic_signature_block_hex_string
+      - MPESA_CONSUMER_KEY=mock_key
+      - MPESA_CONSUMER_SECRET=mock_secret
+      - MPESA_SHORTCODE=174379
+      - MPESA_PASSKEY=bfb272727571314cdb565622cd72272727272727272727272727272727272727
+      - BACKEND_URL=http://localhost:5000
+    depends_on:
+      - postgres
+    networks:
+      - omt_network
+    restart: always
+
+  frontend:
+    build: ./frontend
+    container_name: omt_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_WS_URL=ws://localhost:5000
+    networks:
+      - omt_network
+    restart: always
+
+networks:
+  omt_network:
+    driver: bridge
+
+volumes:
+  pgdata:
